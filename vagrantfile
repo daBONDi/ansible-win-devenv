@@ -1,0 +1,154 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Ansible Source Path
+# get mounted on /opt/ansible on ansidev
+# Change this to your Repo Dir of Ansible
+ansible_repo = 'd:/dev/ansible'
+
+# Active Directory Development Server dc.dev.local Settings
+activedirectory_development_domain = 'dev.local'
+activedirectory_development_domain_netbios = 'DEV'
+activedirectory_development_domain_dnsserver = '10.233.15.201'
+
+# Private Network IP Address of the Ansible Box, will used also for DNS Resolution for Windows Boxes
+ansidev_ip ='10.233.15.200'
+
+# Virtual Box Private Network Name
+ansidev_network_name = 'ansidev-net'
+
+##############################################################################
+#                          Define Boxes herer                                #
+##############################################################################
+
+win2016 = {
+    :'w2016s1' => {
+        :hostname => 'w2016s1',
+        :ip => '10.233.15.61'
+    }
+
+}
+
+##############################################################################
+#                          Don't Touch here                                  #
+##############################################################################
+
+# Ansdev VM
+ansible_dev_box = {
+    :'ansidev' => {
+        :hostname => 'ansidev',
+        :ip => ansidev_ip
+    }
+}
+
+# dc1.dev.local Active Directory Development Domain Controller
+domaincontrollers = {
+    :'dc1' => {
+        :hostname => 'dc1',
+        :ip => activedirectory_development_domain_dnsserver
+    }
+}
+
+
+# Installing Required Plugins
+# Required Plugins
+required_plugins = %w(vagrant-reload)
+
+plugins_to_install = required_plugins.select { |plugin| not Vagrant.has_plugin? plugin }
+if not plugins_to_install.empty?
+  puts "Installing plugins: #{plugins_to_install.join(' ')}"
+  if system "vagrant plugin install #{plugins_to_install.join(' ')}"
+    exec "vagrant #{ARGV.join(' ')}"
+  else
+    abort "Installation of one or more plugins has failed. Aborting."
+  end
+end
+
+
+Vagrant.configure("2") do |config|
+    ##############################################################################
+    #                          global configuration                              #
+    ##############################################################################
+
+    # global virtualmachine configuration
+    config.vm.box_check_update = false
+
+    # global virtualbox configuration
+    config.vm.provider "virtualbox" do |vb|
+        vb.gui = true
+    end
+
+    ##############################################################################
+    #                          ansidev                                           #
+    ##############################################################################
+    ansible_dev_box.each do | name, cfg |
+        config.vm.define name do | vm_config |
+
+            vm_config.vm.hostname = cfg[:hostname]
+            vm_config.vm.box = "minimal/xenial64"
+            vm_config.vm.network "private_network", ip: cfg[:ip], virtualbox__intnet: ansidev_network_name
+
+            #Configure Base VM Properties
+            vm_config.vm.provider :virtualbox do |vb|
+                vb.name = cfg[:hostname]
+                vb.memory = 2048
+                vb.cpus = 2
+            end
+
+            # Mount Ansible Repo
+            vm_config.vm.synced_folder ansible_repo, "/opt/ansible", id: "ansible-repo", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=664"]
+        
+            # Configure the dnsmasq so we can use Internet DNS and internal AD Domain
+            vm_config.vm.provision "ansible_local" do | ansible |
+                ansible.playbook = "vagrant/ansidev/provision-ansidev.yml"
+                ansible.install_mode = "pip"
+                ansible.version = "latest"
+                ansible.extra_vars = {
+                    windows_domain_fqdn: activedirectory_development_domain,
+                    windows_domain_dns_server_address: activedirectory_development_domain_dnsserver
+                }
+            end
+
+            # Remove Ansible Vagrant Installation
+            vm_config.vm.provision "shell",
+                privileged: true,
+                inline: "pip uninstall -y ansible"
+            
+            # Restart VM after Uninstallation
+            vm_config.vm.provision :reload
+        end
+    end
+
+    ##############################################################################
+    #                          Windows 2016 DC                                   #
+    ##############################################################################
+    domaincontrollers.each do | name, cfg |
+        config.vm.define name do | vm_config |
+
+            vm_config.vm.hostname = cfg[:hostname]
+            vm_config.vm.box = "mwrock/Windows2016"
+            vm_config.vm.network "private_network", ip: cfg[:ip], virtualbox__intnet: ansidev_network_name
+
+            #Configure Base VM Properties
+            vm_config.vm.provider :virtualbox do |vb|
+                vb.name = cfg[:hostname]
+                vb.memory = 2048
+                vb.cpus = 2
+            end
+
+            # Configure Windows Host for Remoteing
+            vm_config.vm.provision "shell", path:"vagrant/win/ConfigureRemotingForAnsible.ps1"
+
+            # Setup DNS Server is ansidev
+            vm_config.vm.provision "shell", run: "always", path:"vagrant/win/provision-dns.ps1", args: ansidev_ip
+
+            # Setup Domain Controller
+            vm_config.vm.provision "shell", path:"vagrant/win/install-dc.ps1", args: [activedirectory_development_domain, activedirectory_development_domain_netbios]
+
+            # Restart VM After DC Install
+            vm_config.vm.provision :reload
+        end
+    end
+
+
+end
