@@ -1,0 +1,46 @@
+
+
+---
+
+# Configure DNS Conditional Forwarder on ansibox
+
+- hosts: all
+  gather_facts: false
+  become: yes
+
+  vars:
+    # Windows Development Active Directory Domain Server, normaly Vagrant box 'dc'
+    # Passed by Vagrant Extra Vars
+    # windows_domain_dns_server_address: "10.233.2.201"
+    # windows_domain_fqdn: "dev.local"
+
+  handlers:
+    - name: dnsmasq_restart
+      service:
+        name: dnsmasq
+        state: reloaded
+  
+  tasks:
+
+    # Installing and Configuring DNS Masq
+    - name: "Installing required Packages"
+      apt:
+        name: "{{ item }}"
+        cache_valid_time: 4320
+        state: present
+      with_items:
+        - "dnsmasq"
+        - "dnsutils"
+
+    - name: "Ensure DNS Masq Configuration"
+      lineinfile:
+        path: "/etc/dnsmasq.conf"
+        line: "{{item}}"
+      with_items:
+        - "server=/{{windows_domain_fqdn}}/{{windows_domain_dns_server_address}}"
+        - "server=/in-addr.arpa/{{windows_domain_dns_server_address}}"
+      notify: dnsmasq_restart
+    
+    # Installing and Configuring Development Requirements
+    
+
