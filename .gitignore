@@ -1,2 +1,3 @@
 # Ignore Vagrant Work Folder
 .vagrant/
+.retry
