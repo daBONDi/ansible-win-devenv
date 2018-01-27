@@ -5,14 +5,15 @@
 # Configure DNS Conditional Forwarder on ansibox
 
 - hosts: all
-  gather_facts: false
   become: yes
 
   vars:
     # Windows Development Active Directory Domain Server, normaly Vagrant box 'dc'
     # Passed by Vagrant Extra Vars
-    # windows_domain_dns_server_address: "10.233.2.201"
-    # windows_domain_fqdn: "dev.local"
+
+    # Default Values
+    windows_domain_dns_server_address: "10.233.2.201"
+    windows_domain_fqdn: "dev.local"
 
   handlers:
     - name: dnsmasq_restart
@@ -40,7 +41,20 @@
         - "server=/{{windows_domain_fqdn}}/{{windows_domain_dns_server_address}}"
         - "server=/in-addr.arpa/{{windows_domain_dns_server_address}}"
       notify: dnsmasq_restart
+        
+    - name: "Ensure Ansible python requirements from source"
+      pip:
+        requirements: /opt/ansible/requirements.txt
     
-    # Installing and Configuring Development Requirements
-    
+    - name: "Ensure prereq for pywinrm kerberos libary"
+      apt:
+        name: "{{ item }}"
+      with_items:
+        - 'krb5-user'
+        - 'libkrb5-dev'
+      when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'  
+        
+    - name: "Ensure pywinrm libary"
+      pip:
+        name: pywinrm[kerberos]
 
