@@ -4,7 +4,7 @@
 # Ansible Source Path
 # get mounted on /opt/ansible on ansidev
 # Change this to your Repo Dir of Ansible
-ansible_repo = 'd:/dev/ansible'
+ansible_repo = 'g:/dev/ansible'
 
 # Active Directory Development Server dc.dev.local Settings
 activedirectory_development_domain = 'dev.local'
