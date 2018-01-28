@@ -1,0 +1,19 @@
+
+- name: "Executing join-domain.yml"
+  gather_facts: false
+  hosts: w2016s1
+  tasks:
+    - name: Joining Development Domain
+      win_domain_membership:
+        dns_domain_name: dev.local
+        domain_admin_password: 'vagrant'
+        domain_admin_user: 'vagrant'
+      register: domain_join_result
+    
+    - name: "Reboot if required"
+      when: domain_join_result.reboot_required
+      win_reboot:
+        shutdown_timeout: 3600
+        reboot_timeout: 3600
+
+

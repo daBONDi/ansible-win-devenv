@@ -24,15 +24,12 @@ ansidev_network_name = 'ansidev-net'
 #                          Define needed Windows Servers here                #
 ##############################################################################
 
-win2016 = {
+win_server = {
     :'w2016s1' => {
         :hostname => 'w2016s1',
         :ip => '10.233.15.61',
-        :image => 'mwrock/server2016'
-    }
-}
-
-win2012r2 = {
+        :image => 'mwrock/Windows2016'
+    },
     :'w2012r2s1' => {
         :hostname => 'w2012r2s1',
         :ip => '10.233.15.62',
@@ -134,6 +131,41 @@ Vagrant.configure("2") do |config|
             vm_config.vm.provision :reload
         end
     end
+
+    ##############################################################################
+    #                          Windows Server                                    #
+    ##############################################################################
+    win_server.each do | name, cfg |
+        config.vm.define name do | vm_config |
+
+            vm_config.vm.hostname = cfg[:hostname]
+            vm_config.vm.box = cfg[:image]
+            vm_config.vm.network "private_network", ip: cfg[:ip], virtualbox__intnet: ansidev_network_name
+
+            # Ensure cfg.ram is defined, if not set default value
+            if !cfg[:ram]
+                cfg[:ram] = 2048
+            end 
+
+            # Ensure cfg.cpu is defined if not set default value
+            if !cfg[:cpu]
+                cfg[:cpu] = 2
+            end
+            
+            #Configure Base VM Properties
+            vm_config.vm.provider :virtualbox do |vb|
+                vb.name = cfg[:hostname]
+                vb.memory = cfg[:ram]
+                vb.cpus = cfg[:cpu]
+            end
+            
+            # Setup DNS Server is ansidev
+            vm_config.vm.provision "shell", privileged: true, path: "vagrant/win/provision-dns.ps1", args: [ansidev_ip,cfg[:ip]]
+
+        end
+    end
+
+
 
     ##############################################################################
     #                          Windows 2016 DC                                   #
