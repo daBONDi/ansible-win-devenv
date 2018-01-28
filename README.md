@@ -56,6 +56,6 @@ More Info about Vagrant
  - [ ] Windows Server 2016 Support - Multiple VMs
  - [ ] Windows Server 2012 R2 Support - Multiple VMs
  - [ ] Customize Different Server Roles for Testing
- - [ ] ansidev box as conditional DNS Forwarder for Windows Development Domain(dnsmasq)
+ - ~~[x] ansidev box as conditional DNS Forwarder for Windows Development Domain(dnsmasq)~~
 
  Build with Love from @daBONDi for **Ansible Windows Working Group**
