@@ -1,19 +1,17 @@
-
-
----
-
-# Configure DNS Conditional Forwarder on ansibox
-
+# Provision theh ansidev Box with Vagrant ansible_local
 - hosts: all
   become: yes
 
   vars:
     # Windows Development Active Directory Domain Server, normaly Vagrant box 'dc'
     # Passed by Vagrant Extra Vars
-
-    # Default Values
     windows_domain_dns_server_address: "10.233.2.201"
     windows_domain_fqdn: "dev.local"
+
+    # Mapped Paths trough vagrant
+    # Passed by Vagrant Extra Vars
+    ansible_mount_src: "/opt/ansible"
+    playground_mount_point: "/opt/playground"
 
   handlers:
     - name: dnsmasq_restart
@@ -33,7 +31,7 @@
         - "dnsmasq"
         - "dnsutils"
 
-    - name: "Ensure DNS Masq Configuration"
+    - name: "Ensure DNS Masq Configuration for AD Domain"
       lineinfile:
         path: "/etc/dnsmasq.conf"
         line: "{{item}}"
@@ -58,3 +56,14 @@
       pip:
         name: pywinrm[kerberos]
 
+    - name: "Ensure hacking/env_setup gets executed on ssh login"
+      lineinfile:
+        path: "/home/vagrant/.bashrc"
+        regexp: "^source {{ ansible_mount_src }}/hacking/env-setup -q"
+        line: "source {{ ansible_mount_src }}/hacking/env-setup -q"
+    
+    - name: "Ensure we start in Playground Directory on ssh login"
+      lineinfile:
+        path: "/home/vagrant/.bashrc"
+        regexp: "^cd {{ playground_mount_point }}"
+        line: "cd {{ playground_mount_point }}"
