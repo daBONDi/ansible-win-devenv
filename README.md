@@ -16,36 +16,41 @@ mounting the Ansible Source in it, so all dns lookups for the Activedirectory Do
 
 Use **playground** folder for building your playbooks and usecases for development and debugging
 
-#### Run Ansible Development Machine - ansidev
+### Run Ansible Development Machine - ansidev
+
 ```ssh
 vagrant up ansidev
 ```
 
-#### Run the Domaincontroller - dc1
+### Run the Domaincontroller - dc1
+
 ```ssh
 vagrant up dc1
 ```
 
-#### Rebuild all Systems
+### Rebuild all Systems
+
 ```ssh
 vagrant destroy
 vagrant up
 ```
 
-#### Rebuild only one System
+### Rebuild only one System
+
 ```ssh
 vagrant destroy vmname
 vagrant up vmname
 ```
 
 More Info about Vagrant
- - https://www.vagrantup.com/docs/index.html
 
+- [https://www.vagrantup.com/docs/index.html](https://www.vagrantup.com/docs/index.html)
 
 ## Requirements
- - Vagrant
- - Virtualbox
- - Plenty of Diskspace on Users Directory(typical c:/user/username) for Vagrant Images
- - a BIIIGGG Coffee and an epic Youtube Playlist while watching vagrant do its stuff :-)
+
+- Vagrant
+- Virtualbox
+- Plenty of Diskspace on Users Directory(typical c:/user/username) for Vagrant Images
+- a BIIIGGG Coffee and an epic Youtube Playlist while watching vagrant do its stuff :-)
 
  Build with Love from @daBONDi for **Ansible Windows Working Group**
