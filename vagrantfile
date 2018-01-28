@@ -1,10 +1,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+#############################################################################################################################
 # Ansible Source Path
 # get mounted on /opt/ansible on ansidev
 # Change this to your Repo Dir of Ansible
 ansible_repo = 'g:/dev/ansible'
+#############################################################################################################################
+
 
 # Active Directory Development Server dc.dev.local Settings
 activedirectory_development_domain = 'dev.local'
@@ -18,20 +21,32 @@ ansidev_ip ='10.233.15.200'
 ansidev_network_name = 'ansidev-net'
 
 ##############################################################################
-#                          Define Boxes herer                                #
+#                          Define needed Windows Servers here                #
 ##############################################################################
 
 win2016 = {
     :'w2016s1' => {
         :hostname => 'w2016s1',
-        :ip => '10.233.15.61'
+        :ip => '10.233.15.61',
+        :image => 'mwrock/server2016'
     }
+}
 
+win2012r2 = {
+    :'w2012r2s1' => {
+        :hostname => 'w2012r2s1',
+        :ip => '10.233.15.62',
+        :image => 'mwrock/Windows2012R2'
+    }
 }
 
 ##############################################################################
 #                          Don't Touch here                                  #
 ##############################################################################
+
+# Shared Directorys
+ansible_source_mount_path = "/opt/ansible"
+playground_mount_path = "/opt/playground"
 
 # Ansdev VM
 ansible_dev_box = {
@@ -64,7 +79,6 @@ if not plugins_to_install.empty?
   end
 end
 
-
 Vagrant.configure("2") do |config|
     ##############################################################################
     #                          global configuration                              #
@@ -96,16 +110,18 @@ Vagrant.configure("2") do |config|
             end
 
             # Mount Ansible Repo
-            vm_config.vm.synced_folder ansible_repo, "/opt/ansible", id: "ansible-repo", owner: "vagrant", group: "vagrant"
+            vm_config.vm.synced_folder ansible_repo, ansible_source_mount_path, id: "ansible-repo", owner: "vagrant", group: "vagrant"
+            vm_config.vm.synced_folder "playground", playground_mount_path, id: "playground", owner: "vagrant", group: "vagrant"
         
-            # Configure the dnsmasq so we can use Internet DNS and internal AD Domain
+            # Configure the ansidevbox with ansible
             vm_config.vm.provision "ansible_local" do | ansible |
                 ansible.playbook = "vagrant/ansidev/provision-ansidev.yml"
                 ansible.install_mode = "pip"
                 ansible.version = "latest"
                 ansible.extra_vars = {
                     windows_domain_fqdn: activedirectory_development_domain,
-                    windows_domain_dns_server_address: activedirectory_development_domain_dnsserver
+                    windows_domain_dns_server_address: activedirectory_development_domain_dnsserver,
+                    ansible_mounted_source: ansible_source_mount_path
                 }
             end
 
@@ -126,7 +142,8 @@ Vagrant.configure("2") do |config|
         config.vm.define name do | vm_config |
 
             vm_config.vm.hostname = cfg[:hostname]
-            vm_config.vm.box = "mwrock/Windows2016"
+            # Cannot use mwrock/Windows2016 because it removed all Feature Packages and Active Directory Service cannot install from Windows Update Source
+            vm_config.vm.box = "jacqinthebox/windowsserver2016core"
             vm_config.vm.network "private_network", ip: cfg[:ip], virtualbox__intnet: ansidev_network_name
 
             #Configure Base VM Properties
@@ -135,15 +152,15 @@ Vagrant.configure("2") do |config|
                 vb.memory = 2048
                 vb.cpus = 2
             end
-
-            # Configure Windows Host for Remoteing
-            #vm_config.vm.provision "shell", path:"vagrant/win/ConfigureRemotingForAnsible.ps1"
-
+            
+            vm_config.winrm.basic_auth_only = true
+            vm_config.winrm.retry_limit = 20
+            vm_config.winrm.retry_delay = 10
             # Setup DNS Server is ansidev
-            vm_config.vm.provision "shell", privileged: true, path:"vagrant/win/provision-dns.ps1", args: [ansidev_ip,cfg[:ip]]
+            vm_config.vm.provision "shell", privileged: true, path: "vagrant/win/provision-dns.ps1", args: [ansidev_ip,cfg[:ip]]
 
             # Setup Domain Controller
-            # vm_config.vm.provision "shell", privileged: true, path: "vagrant/win/install-dc.ps1", args: [activedirectory_development_domain, activedirectory_development_domain_netbios]
+            vm_config.vm.provision "shell", privileged: true, path: "vagrant/win/install-dc.ps1", args: [activedirectory_development_domain, activedirectory_development_domain_netbios]
 
             # Restart VM After DC Install
             # vm_config.vm.provision :reload
