@@ -56,4 +56,4 @@ More Info about Vagrant
 - Plenty of Diskspace on Users Directory(typical c:/user/username) for Vagrant Images
 - a BIIIGGG Coffee and an epic Youtube Playlist while watching vagrant do its stuff :-)
 
- Build with Love from @daBONDi for **Ansible Windows Working Group**
+ Build with Love from @daBONDi for **Ansible Windows Community / Ansible Windows Working Group**
