@@ -8,7 +8,6 @@
 ansible_repo = 'g:/dev/ansible'
 #############################################################################################################################
 
-
 # Active Directory Development Server dc.dev.local Settings
 activedirectory_development_domain = 'dev.local'
 activedirectory_development_domain_netbios = 'DEV'
@@ -45,7 +44,10 @@ win_server = {
 ansible_source_mount_path = "/opt/ansible"
 playground_mount_path = "/opt/playground"
 
-# Ansdev VM
+# Default Boxe for Windows Server
+default_windows_image = "mwrock/Windows2016"
+
+# Ansidev VM
 ansible_dev_box = {
     :'ansidev' => {
         :hostname => 'ansidev',
@@ -138,6 +140,14 @@ Vagrant.configure("2") do |config|
     win_server.each do | name, cfg |
         config.vm.define name do | vm_config |
 
+            if !cfg[:image]
+                cfg[:image] = default_windows_image
+            end
+
+            if !cfg[:hostname]
+                cfg[:hostname] = [*('A'..'Z')].sample(8).join
+            end
+
             vm_config.vm.hostname = cfg[:hostname]
             vm_config.vm.box = cfg[:image]
             vm_config.vm.network "private_network", ip: cfg[:ip], virtualbox__intnet: ansidev_network_name
@@ -164,8 +174,6 @@ Vagrant.configure("2") do |config|
 
         end
     end
-
-
 
     ##############################################################################
     #                          Windows 2016 DC                                   #
@@ -194,8 +202,9 @@ Vagrant.configure("2") do |config|
             # Setup Domain Controller
             vm_config.vm.provision "shell", privileged: true, path: "vagrant/win/install-dc.ps1", args: [activedirectory_development_domain, activedirectory_development_domain_netbios]
 
-            # Restart VM After DC Install
-            # vm_config.vm.provision :reload
+            # After the Steps, Vagrant don't wait for the Reboot...
+            # getting Message: WinRM::WinRMAuthorizationError, but Domain Controller looks working
+
         end
     end
 
